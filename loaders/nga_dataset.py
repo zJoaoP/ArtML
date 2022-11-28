@@ -59,18 +59,17 @@ def download_nga_dataset(folder='nga_dataset'):
 
             q.task_done()
 
-    threading.Thread(target=download_worker, daemon=True).start()
-
     for (index, row) in dataset.iterrows():
         width, height = min(MAX_WIDTH, row['width']), min(MAX_HEIGHT, row['height'])
         if not os.path.exists(get_destination_filepath(row['uuid'])):
             q.put((row['uuid'], width, height))
             file_counter += 1
 
+    print("Downloading NGA dataset..")
     for _ in range(concurrent_runs):
         t = threading.Thread(target=download_worker, daemon=True)
         t.start()
 
     q.join()
-
+    print("NGA dataset downloaded successfully!!")
     return dataset

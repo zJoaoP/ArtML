@@ -1,11 +1,18 @@
 import multiprocessing
+
+import PIL
 import pandas as pd
+import numpy as np
 import threading
 import requests
 import os
 
 from queue import Queue
+from PIL import Image
 
+
+UNAVAILABLE_IMAGE_MESSAGE = "No image resource with that identifier could be located."
+IMAGE_WIDTH = IMAGE_HEIGHT = 32
 MAX_WIDTH = MAX_HEIGHT = 256
 
 
@@ -14,12 +21,27 @@ def load_nga_dataset(location="https://raw.githubusercontent.com/NationalGallery
     return pd.read_csv(location)
 
 
+def check_downloaded_images(folder='nga_dataset'):
+    print("Running dataset integrity check..")
+    has_error = False
+    for filename in os.listdir(folder):
+        filepath = os.path.join(folder, filename)
+        try:
+            Image.open(filepath)
+        except PIL.UnidentifiedImageError:
+            print("The file {} is corrupted and needs to be downloaded again".format(filepath))
+            os.remove(filepath)
+            has_error = True
+
+    return not has_error
+
+
 def is_dataset_downloaded(folder='nga_dataset', dataset=None):
     if dataset is None:
         dataset = load_nga_dataset("nga_dataset.csv")
 
-    items_on_dir = os.listdir('nga_dataset')
-    os.listdir('nga_dataset')
+    print("NGA dataset already downloaded..")
+    items_on_dir = os.listdir(folder)
     return len(dataset) == len(items_on_dir)
 
 
@@ -41,23 +63,30 @@ def download_nga_dataset(folder='nga_dataset'):
     def download_worker():
         nonlocal files_downloaded
         while True:
-            uuid, width, height = q.get()
+            if q.empty():
+                break
+            else:
+                uuid, width, height = q.get()
 
-            image_url = "https://api.nga.gov/iiif/{}/full/!{},{}/0/default.jpg".format(uuid, width, height)
-            image_path = get_destination_filepath(uuid)
-            if os.path.exists(image_path):
-                continue
+                image_url = "https://api.nga.gov/iiif/{}/full/!{},{}/0/default.jpg".format(uuid, width, height)
+                image_path = get_destination_filepath(uuid)
+                if os.path.exists(image_path):
+                    continue
 
-            img_data = requests.get(image_url).content
-            with open(image_path, 'wb') as handler:
-                handler.write(img_data)
+                img_data = requests.get(image_url).content
+                if img_data.decode('utf-8').find(UNAVAILABLE_IMAGE_MESSAGE) != -1:
+                    print("Couldn't find {} resource. Skipping this file..".format(uuid))
+                    continue
 
-            with files_downloaded_lock:
-                files_downloaded += 1
-                if files_downloaded % 10 == 0:
-                    print("{} of {} images downloaded".format(files_downloaded, file_counter))
+                with open(image_path, 'wb') as handler:
+                    handler.write(img_data)
 
-            q.task_done()
+                with files_downloaded_lock:
+                    files_downloaded += 1
+                    if files_downloaded % 10 == 0:
+                        print("{} of {} images downloaded".format(files_downloaded, file_counter))
+
+                q.task_done()
 
     for (index, row) in dataset.iterrows():
         width, height = min(MAX_WIDTH, row['width']), min(MAX_HEIGHT, row['height'])
@@ -71,5 +100,26 @@ def download_nga_dataset(folder='nga_dataset'):
         t.start()
 
     q.join()
+
     print("NGA dataset downloaded successfully!!")
+    check_downloaded_images(folder)
     return dataset
+
+
+def nga_dataset_generator(folder="nga_dataset", batch_size=8):
+    filenames = os.listdir(folder)
+    loaded_images = dict()
+
+    while True:
+        for batch_id in range(len(filenames) // batch_size):
+            batch_filenames = filenames[batch_id * batch_size:(batch_id + 1) * batch_size]
+            current_batch = np.empty(shape=(batch_size, IMAGE_WIDTH, IMAGE_HEIGHT, 3), dtype=np.float32)
+            for i, image_name in enumerate(batch_filenames):
+                if image_name not in loaded_images:
+                    filepath = os.path.join(folder, image_name)
+                    raw_image = Image.open(filepath).resize((IMAGE_WIDTH, IMAGE_HEIGHT))
+                    loaded_images[image_name] = (np.array(raw_image) / 255.0).astype(np.float32)
+
+                current_batch[i] = loaded_images[image_name]
+
+            yield current_batch, current_batch

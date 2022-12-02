@@ -2,10 +2,10 @@ import os
 
 from models.autoencoder import build_autoencoder, CHECKPOINT_PATH
 from loaders.nga_dataset import IMAGE_WIDTH, IMAGE_HEIGHT
-import matplotlib.pyplot as plt
 from models.som import SOM
-
 from PIL import Image
+
+import matplotlib.pyplot as plt
 import numpy as np
 import argparse
 

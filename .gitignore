@@ -166,3 +166,5 @@ cython_debug/
 nga_dataset
 checkpoints
 graphs
+
+*.rar

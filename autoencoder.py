@@ -1,7 +1,7 @@
 
 
-from loaders.nga_dataset import download_nga_dataset, nga_dataset_generator
 from models.autoencoder import build_autoencoder, build_autoencoder_callbacks
+from loaders.nga_dataset import nga_dataset_generator, download_nga_dataset
 import argparse
 
 DEFAULT_BATCH_SIZE = 8
@@ -28,7 +28,7 @@ def parse_args():
 
 if __name__ == '__main__':
     args = parse_args()
-    # download_nga_dataset(args.dataset)
+    download_nga_dataset(args.dataset)
 
     encoder, decoder, autoencoder = build_autoencoder()
     encoder.summary()
@@ -37,5 +37,8 @@ if __name__ == '__main__':
     autoencoder.fit(nga_dataset_generator(args.dataset, args.batch),
                     epochs=args.epochs,
                     steps_per_epoch=args.steps,
-                    callbacks=build_autoencoder_callbacks(args.dataset))
+                    callbacks=build_autoencoder_callbacks(args.dataset),
+                    verbose=True)
+
+    autoencoder.load_weights('checkpoints/autoencoder.ckpt')
 

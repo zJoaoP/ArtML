@@ -37,7 +37,7 @@ class AutoEncoderCustomCallback(tf.keras.callbacks.Callback):
 def build_autoencoder_callbacks(folder):
     checkpoint = tf.keras.callbacks.ModelCheckpoint(filepath=CHECKPOINT_PATH,
                                                     save_weights_only=True,
-                                                    monitor='loss', mode='min', save_best_only=True)
+                                                    monitor='loss', mode='min', save_best_only=True, verbose=True)
     return [checkpoint, AutoEncoderCustomCallback(folder)]
 
 

@@ -164,6 +164,7 @@ cython_debug/
 #.idea/
 
 nga_dataset
+cache
 checkpoints
 graphs
 

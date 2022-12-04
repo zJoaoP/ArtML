@@ -47,7 +47,7 @@ if __name__ == '__main__':
     pd.DataFrame(history.history).plot(figsize=(8, 5))
     plt.gca()
     plt.grid(True)
-    plt.show()
+    plt.savefig('graphs/autoencoder-training.png')
 
     results = autoencoder.evaluate(test_x, test_y)
     print("Evaluation on test set:", results)

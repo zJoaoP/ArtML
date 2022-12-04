@@ -35,8 +35,8 @@ def parse_args():
 
     parser.add_argument('dataset', help="NGA dataset folder")
     parser.add_argument('--weights', '--w', help="Autoencoder weights path", default=CHECKPOINT_PATH)
-    parser.add_argument('--nodes', '--n', help="SOM node count", default=DEFAULT_NODE_COUNT)
-    parser.add_argument('--steps', '--s', help="SOM training step count", default=DEFAULT_STEPS_COUNT)
+    parser.add_argument('--nodes', '--n', type=int, help="SOM node count", default=DEFAULT_NODE_COUNT)
+    parser.add_argument('--steps', '--s', type=int, help="SOM training step count", default=DEFAULT_STEPS_COUNT)
 
     return parser.parse_args()
 

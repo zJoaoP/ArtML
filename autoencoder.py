@@ -19,8 +19,9 @@ def parse_args():
         add_help=True)
 
     parser.add_argument('dataset', help="NGA dataset folder")
-    parser.add_argument('--batch', '--b', nargs="?", help="autoencoder training batch size", default=DEFAULT_BATCH_SIZE)
-    parser.add_argument('--epochs', '--e', nargs="?", help="autoencoder training epochs",
+    parser.add_argument('--batch', '--b', nargs="?", type=int, help="autoencoder training batch size",
+                        default=DEFAULT_BATCH_SIZE)
+    parser.add_argument('--epochs', '--e', nargs="?", type=int, help="autoencoder training epochs",
                         default=DEFAULT_TRAINING_EPOCHS)
     parser.add_argument('--plots', '--p', action="store_true",
                         help="generate autoencoder plots on graphs folder", default=False)

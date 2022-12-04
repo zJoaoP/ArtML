@@ -13,6 +13,7 @@ from PIL import Image
 
 
 UNAVAILABLE_IMAGE_MESSAGE = "No image resource with that identifier could be located."
+CACHE_FOLDER = 'cache'
 IMAGE_WIDTH = IMAGE_HEIGHT = 32
 MAX_WIDTH = MAX_HEIGHT = 256
 
@@ -107,7 +108,15 @@ def download_nga_dataset(folder='nga_dataset'):
     return dataset
 
 
+def build_cache_name(mode, split):
+    return "{}/{}-{}.cache.npy".format(CACHE_FOLDER, mode, split)
+
+
 def load_nga_dataset(folder="nga_dataset", mode='training', split=0.8):
+    cache_path = build_cache_name(mode, split)
+    if os.path.isfile(cache_path):
+        return np.load(cache_path)
+
     filenames = os.listdir(folder)
     filenames = filenames[:math.floor(len(filenames) * split)] \
         if mode == 'training' \
@@ -123,6 +132,7 @@ def load_nga_dataset(folder="nga_dataset", mode='training', split=0.8):
         except PIL.UnidentifiedImageError:
             images[i] = np.zeros(shape=(32, 32, 3))
 
+    np.save(cache_path, images)
     return images
 
 

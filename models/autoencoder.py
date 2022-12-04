@@ -40,7 +40,9 @@ def build_autoencoder_callbacks(folder):
     checkpoint = tf.keras.callbacks.ModelCheckpoint(filepath=CHECKPOINT_PATH,
                                                     save_weights_only=True,
                                                     monitor='val_loss', mode='min', save_best_only=True, verbose=True)
-    return [checkpoint, AutoEncoderCustomCallback(folder)]
+
+    early_stopping = tf.keras.callbacks.EarlyStopping(monitor="val_loss", patience=15)
+    return [checkpoint, early_stopping, AutoEncoderCustomCallback(folder)]
 
 
 def build_encoder():

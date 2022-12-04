@@ -1,3 +1,4 @@
+import matplotlib.pyplot as plt
 import numpy as np
 
 
@@ -31,6 +32,14 @@ class SOM:
     def gaussian_neighborhood(self, x, step):
         return np.exp(-((x ** 2) / (2 * self.sigma(step) ** 2)))
 
+    def ricker_wavelet(self, x, step):
+        a = self.sigma(step)
+        y = (2 / (np.sqrt(3 * a) * np.power(np.pi, 1 / 3)))\
+            * (1 - (x / a) ** 2) * np.exp(-(x ** 2) / (a ** 2))
+
+        y[y > 1.0] = 1.0
+        return y
+
     def predict(self, point):
         return SOM.euclidean_distance(self.nodes, point).sum(axis=1).argmin()
 
@@ -40,12 +49,21 @@ class SOM:
     def eta(self, step):
         return SOM.decay(step, self.eta_decay_rate, self.initial_eta, self.min_eta)
 
+    def topological_neighborhood(self, distances, step):
+        return self.ricker_wavelet(distances, step)
+
+    def plot_topological_neighborhood(self, step=0):
+        x = np.linspace(-10, 10, 1000)
+        y = self.topological_neighborhood(x, step)
+        plt.plot(x, y)
+        plt.show()
+
     def fit(self, dataset, steps=1):
         for step in range(steps):
             sample = dataset[step % len(dataset)]
             winner = self.predict(sample)
 
             distance_from_winner = SOM.euclidean_distance(self.nodes, self.nodes[winner])
-            topological_neighborhood = self.gaussian_neighborhood(distance_from_winner, step)
+            topological_neighborhood = self.topological_neighborhood(distance_from_winner, step)
 
             self.nodes += self.eta(step) * topological_neighborhood * (sample - self.nodes)

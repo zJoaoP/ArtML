@@ -5,6 +5,7 @@ import pandas as pd
 import numpy as np
 import threading
 import requests
+import math
 import os
 
 from queue import Queue
@@ -106,8 +107,32 @@ def download_nga_dataset(folder='nga_dataset'):
     return dataset
 
 
-def nga_dataset_generator(folder="nga_dataset", batch_size=8):
+def load_nga_dataset(folder="nga_dataset", mode='training', split=0.8):
     filenames = os.listdir(folder)
+    filenames = filenames[:math.floor(len(filenames) * split)] \
+        if mode == 'training' \
+        else filenames[:-1][:math.floor(len(filenames) * split)]
+
+    print("loading {} {} images..".format(len(filenames), mode))
+
+    images = np.empty(shape=(len(filenames), 32, 32, 3), dtype=np.float32)
+    for i, filename in enumerate(filenames):
+        try:
+            raw_image = Image.open(os.path.join(folder, filename)).resize((IMAGE_WIDTH, IMAGE_HEIGHT))
+            images[i] = (np.array(raw_image) / 255.0).astype(np.float32)
+        except PIL.UnidentifiedImageError:
+            images[i] = np.zeros(shape=(32, 32, 3))
+
+    return images
+
+
+def nga_dataset_generator(folder="nga_dataset", batch_size=8, mode='training', split=0.8):
+    filenames = os.listdir(folder)
+    filenames = filenames[:math.floor(len(filenames) * split)] \
+        if mode == 'training' \
+        else filenames[:-1][:math.floor(len(filenames) * split)]
+
+    print('initializing generator for {} {} samples'.format(len(filenames), mode))
     loaded_images = dict()
 
     while True:
@@ -117,8 +142,11 @@ def nga_dataset_generator(folder="nga_dataset", batch_size=8):
             for i, image_name in enumerate(batch_filenames):
                 if image_name not in loaded_images:
                     filepath = os.path.join(folder, image_name)
-                    raw_image = Image.open(filepath).resize((IMAGE_WIDTH, IMAGE_HEIGHT))
-                    loaded_images[image_name] = (np.array(raw_image) / 255.0).astype(np.float32)
+                    try:
+                        raw_image = Image.open(filepath).resize((IMAGE_WIDTH, IMAGE_HEIGHT))
+                        loaded_images[image_name] = (np.array(raw_image) / 255.0).astype(np.float32)
+                    except PIL.UnidentifiedImageError:
+                        loaded_images[image_name] = np.ones(shape=(32, 32, 3))
 
                 current_batch[i] = loaded_images[image_name]
 

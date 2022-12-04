@@ -1,11 +1,9 @@
-
-
 from models.autoencoder import build_autoencoder, build_autoencoder_callbacks
-from loaders.nga_dataset import nga_dataset_generator, download_nga_dataset
+from loaders.nga_dataset import nga_dataset_generator, download_nga_dataset, load_nga_dataset
 import argparse
 
-DEFAULT_BATCH_SIZE = 8
-DEFAULT_TRAINING_STEPS_PER_EPOCH = 150
+DEFAULT_BATCH_SIZE = 16
+DEFAULT_TRAINING_STEPS_PER_EPOCH = 450
 DEFAULT_TRAINING_EPOCHS = 1000
 
 
@@ -28,17 +26,18 @@ def parse_args():
 
 if __name__ == '__main__':
     args = parse_args()
-    download_nga_dataset(args.dataset)
+    # download_nga_dataset(args.dataset)
 
     encoder, decoder, autoencoder = build_autoencoder()
+    validation_images = load_nga_dataset(args.dataset, mode='validation', split=0.15)
     encoder.summary()
     decoder.summary()
 
-    autoencoder.fit(nga_dataset_generator(args.dataset, args.batch),
+    autoencoder.fit(nga_dataset_generator(args.dataset, args.batch, mode='training', split=0.85),
                     epochs=args.epochs,
                     steps_per_epoch=args.steps,
                     callbacks=build_autoencoder_callbacks(args.dataset),
+                    validation_data=(validation_images, validation_images),
                     verbose=True)
 
-    autoencoder.load_weights('checkpoints/autoencoder.ckpt')
 

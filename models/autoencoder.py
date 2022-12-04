@@ -8,7 +8,9 @@ CHECKPOINT_PATH = 'checkpoints/autoencoder.ckpt'
 GRAPHS_PATH = 'graphs'
 BASE_FILTER_SIZE = 12
 IMAGE_GRID_WIDTH = 5
+COMPRESSION_SIZE = 32
 KERNEL_SIZE = 4
+BLOCKS = 3
 
 
 class AutoEncoderCustomCallback(tf.keras.callbacks.Callback):
@@ -37,39 +39,43 @@ class AutoEncoderCustomCallback(tf.keras.callbacks.Callback):
 def build_autoencoder_callbacks(folder):
     checkpoint = tf.keras.callbacks.ModelCheckpoint(filepath=CHECKPOINT_PATH,
                                                     save_weights_only=True,
-                                                    monitor='loss', mode='min', save_best_only=True, verbose=True)
+                                                    monitor='val_loss', mode='min', save_best_only=True, verbose=True)
     return [checkpoint, AutoEncoderCustomCallback(folder)]
 
 
 def build_encoder():
-    encoder = tf.keras.models.Sequential([
-        tf.keras.layers.Conv2D(BASE_FILTER_SIZE, kernel_size=KERNEL_SIZE, strides=2, padding='SAME', activation='relu',
-                               input_shape=(32, 32, 3)),
-        tf.keras.layers.Conv2D(BASE_FILTER_SIZE * 2, kernel_size=KERNEL_SIZE, strides=2, padding='SAME',
-                               activation='relu'),
-        tf.keras.layers.Conv2D(BASE_FILTER_SIZE * 4, kernel_size=KERNEL_SIZE, strides=2, padding='SAME',
-                               activation='relu'),
-        tf.keras.layers.Flatten(),
-    ])
-    return encoder
+    # Build encoder iterating over block count.
+
+    input_layer = x = tf.keras.layers.Input(shape=(32, 32, 3))
+    for i in range(BLOCKS):
+        factor = 2 ** i
+        x = tf.keras.layers.Conv2D(BASE_FILTER_SIZE * factor, kernel_size=KERNEL_SIZE, strides=2, padding='SAME')(x)
+        x = tf.keras.layers.BatchNormalization()(x)
+        x = tf.keras.layers.ReLU()(x)
+
+    x = tf.keras.layers.Flatten()(x)
+    x = tf.keras.layers.Dense(COMPRESSION_SIZE, activation='sigmoid')(x)
+    return tf.keras.models.Model(inputs=input_layer, outputs=x)
 
 
 def build_decoder():
-    decoder = tf.keras.models.Sequential([
-        tf.keras.layers.Reshape(target_shape=(4, 4, BASE_FILTER_SIZE * 4), input_shape=(768,)),
-        tf.keras.layers.Conv2D(BASE_FILTER_SIZE, kernel_size=KERNEL_SIZE, strides=1, padding='SAME', activation='relu'),
-        tf.keras.layers.UpSampling2D(size=(2, 2)),
-        tf.keras.layers.Conv2D(BASE_FILTER_SIZE * 4, kernel_size=KERNEL_SIZE, strides=1, padding='SAME'),
-        tf.keras.layers.BatchNormalization(),
-        tf.keras.layers.ReLU(),
-        tf.keras.layers.UpSampling2D(size=(2, 2)),
-        tf.keras.layers.Conv2D(BASE_FILTER_SIZE * 2, kernel_size=KERNEL_SIZE, strides=1, padding='SAME'),
-        tf.keras.layers.BatchNormalization(),
-        tf.keras.layers.ReLU(),
-        tf.keras.layers.UpSampling2D(size=(2, 2)),
-        tf.keras.layers.Conv2D(3, kernel_size=KERNEL_SIZE, strides=1, padding='SAME', activation='sigmoid'),
-    ])
-    return decoder
+    input_factor = 2 ** (BLOCKS - 1)
+    input_width = 32 // (input_factor * 2)
+
+    input_layer = x = tf.keras.layers.Input(shape=(COMPRESSION_SIZE,))
+
+    x = tf.keras.layers.Dense(input_width * input_width * BASE_FILTER_SIZE * input_factor, activation='relu')(x)
+    x = tf.keras.layers.Reshape(target_shape=(input_width, input_width, BASE_FILTER_SIZE * input_factor))(x)
+    for i in range(BLOCKS):
+        factor = 2 ** (BLOCKS - i - 1)
+        x = tf.keras.layers.Conv2D(BASE_FILTER_SIZE * factor, kernel_size=KERNEL_SIZE, strides=1, padding='same')(x)
+        x = tf.keras.layers.BatchNormalization()(x)
+        x = tf.keras.layers.UpSampling2D()(x)
+        x = tf.keras.layers.ReLU()(x)
+
+    x = tf.keras.layers.Conv2D(3, kernel_size=KERNEL_SIZE, strides=1, padding='SAME', activation='sigmoid')(x)
+
+    return tf.keras.models.Model(inputs=input_layer, outputs=x)
 
 
 def build_autoencoder():
@@ -82,7 +88,7 @@ def build_autoencoder():
 
     autoencoder.compile(
         optimizer='adam',
-        loss='binary_crossentropy'
+        loss='mse'
     )
 
     return encoder, decoder, autoencoder

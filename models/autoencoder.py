@@ -36,13 +36,16 @@ class AutoEncoderCustomCallback(tf.keras.callbacks.Callback):
         AutoEncoderCustomCallback.plot_and_save(predictions, os.path.join(GRAPHS_PATH, '{}_pred.jpg'.format(epoch)))
 
 
-def build_autoencoder_callbacks(folder):
+def build_autoencoder_callbacks(folder, with_plots=False):
     checkpoint = tf.keras.callbacks.ModelCheckpoint(filepath=CHECKPOINT_PATH,
                                                     save_weights_only=True,
                                                     monitor='val_loss', mode='min', save_best_only=True, verbose=True)
 
     early_stopping = tf.keras.callbacks.EarlyStopping(monitor="val_loss", patience=15)
-    return [checkpoint, early_stopping, AutoEncoderCustomCallback(folder)]
+    if with_plots:
+        return [checkpoint, early_stopping, AutoEncoderCustomCallback(folder)]
+    else:
+        return [checkpoint, early_stopping]
 
 
 def build_encoder():

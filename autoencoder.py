@@ -22,6 +22,8 @@ def parse_args():
     parser.add_argument('--batch', '--b', nargs="?", help="autoencoder training batch size", default=DEFAULT_BATCH_SIZE)
     parser.add_argument('--epochs', '--e', nargs="?", help="autoencoder training epochs",
                         default=DEFAULT_TRAINING_EPOCHS)
+    parser.add_argument('--plots', '--p', action="store_true",
+                        help="generate autoencoder plots on graphs folder", default=False)
 
     return parser.parse_args()
 
@@ -37,7 +39,8 @@ if __name__ == '__main__':
     encoder.summary()
     decoder.summary()
 
-    history = autoencoder.fit(train_x, train_y, epochs=args.epochs, callbacks=build_autoencoder_callbacks(args.dataset),
+    history = autoencoder.fit(train_x, train_y, epochs=args.epochs, callbacks=build_autoencoder_callbacks(args.dataset,
+                                                                                                          args.plots),
                               validation_data=(valid_x, valid_y), verbose=True)
 
     pd.DataFrame(history.history).plot(figsize=(8, 5))
